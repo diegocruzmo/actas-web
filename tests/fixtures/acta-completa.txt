@@ -1,0 +1,28 @@
+###DATOS_GENERALES###
+NUMERO_ACTA: 42
+FECHA: 4 de noviembre de 2026
+SITIO: Virtual
+HORA_INICIO: 08:00
+HORA_CIERRE: 09:00
+CONVOCA: Dirección de pruebas
+TEMA: Planeación & seguimiento <2026>
+OBJETIVO: Revisar los compromisos
+###PARTICIPANTES###
+Ana Pérez | Coordinadora
+Luis Díaz | Asesor
+###AGENDA###
+1. Apertura
+2. Revisión de metas
+###ACTIVIDADES_PENDIENTES###
+Validar cifras | Ana Pérez | 5 de noviembre
+###DESARROLLO###
+Se revisaron los indicadores de gestión.
+
+- Se solicitó actualizar el informe.
+###COMPROMISOS###
+Actualizar informe | Luis Díaz | 6 de noviembre
+###SEGUIMIENTO_DIRECTIVO###
+Indicadores | Retrasos | Ana Pérez | Revisar avance
+###DECISIONES###
+1. Aprobar el plan de trabajo
+###FIN###

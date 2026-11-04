@@ -1,0 +1,25 @@
+# Dependencias y archivos generados
+node_modules/
+dist/
+.vite/
+coverage/
+
+# Registros de ejecución
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Configuración local y variables de entorno
+.env
+.env.*
+!.env.example
+*.local
+
+# Archivos del sistema y del editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
