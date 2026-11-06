@@ -88,3 +88,42 @@ test("decodifica UTF-8, BOM y Windows-1252 sin perder acentos", () => {
 test("nombra el documento a partir del TXT", () => {
   assert.match(nombreSalida("reunion.directiva.TXT"), /^Acta_CMC-F-05_reunion\.directiva_\d{8}_\d{4}\.docx$/);
 });
+
+test("elimina las filas vacías de reserva sin eliminar registros de las tablas", async () => {
+  const r = await generar();
+  const tablas = [...r.doc.getElementsByTagNameNS(W, "tbl")];
+  for (const [indice, filasDatos] of [[1, r.acta.participantes], [3, r.acta.pendientes], [5, r.acta.compromisos], [6, r.acta.seguimiento]]) {
+    const filas = [...tablas[indice].childNodes].filter((n) => n.namespaceURI === W && n.localName === "tr");
+    assert.equal(filas.length, filasDatos.length + 2);
+    for (const [i, valores] of filasDatos.entries()) {
+      const celdas = [...filas[i + 2].childNodes].filter((n) => n.namespaceURI === W && n.localName === "tc");
+      assert.deepEqual(celdas.map((n) => n.textContent), valores);
+    }
+  }
+});
+
+test("permite dividir las filas de contenido sin alterar la protección de los encabezados", async () => {
+  const r = await generar();
+  let encabezados = 0;
+  for (const fila of r.doc.getElementsByTagNameNS(W, "tr")) {
+    if (fila.getElementsByTagNameNS(W, "tblHeader").length) {
+      encabezados++;
+      assert.ok(fila.getElementsByTagNameNS(W, "cantSplit").length > 0);
+    } else {
+      assert.equal(fila.getElementsByTagNameNS(W, "cantSplit").length, 0);
+    }
+  }
+  assert.ok(encabezados > 0);
+});
+
+test("conserva íntegro el desarrollo extenso y permite su continuación entre páginas", async () => {
+  const parrafos = Array.from({ length: 30 }, (_, i) => `Asunto ${i + 1}: ${"Se revisaron los avances y las solicitudes recibidas. ".repeat(15)}`.trim());
+  const texto = contenido.replace(/###DESARROLLO###[\s\S]*?###COMPROMISOS###/, `###DESARROLLO###\n${parrafos.join("\n\n")}\n###COMPROMISOS###`);
+  const r = await generar(texto);
+  const desarrollo = [...r.doc.getElementsByTagNameNS(W, "tbl")][4];
+  const filas = desarrollo.getElementsByTagNameNS(W, "tr");
+  assert.equal(filas[1].getElementsByTagNameNS(W, "cantSplit").length, 0);
+  const textos = [...filas[1].getElementsByTagNameNS(W, "p")].map((p) => p.textContent);
+  assert.deepEqual(textos, parrafos);
+  assert.deepEqual(r.avisos, []);
+});

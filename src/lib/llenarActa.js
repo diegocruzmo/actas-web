@@ -438,6 +438,31 @@ function buscarEncabezado(body, palabras, ocurrencia) {
   return [null, null];
 }
 
+// Las filas de reserva vacías de la plantilla no deben conservarse como registros del acta.
+function esFilaReservaVacia(tr, nCols) {
+  const celdas = celdasUnicas(tr);
+  if (celdas.length !== nCols || celdas.some((tc) => textoCelda(tc).trim())) return false;
+  return !["drawing", "pict", "object", "sdt", "fldChar", "instrText", "br", "tab", "vMerge", "sectPr"].some(
+    (local) => tr.getElementsByTagNameNS(W, local).length
+  );
+}
+
+// La división de filas permite que los textos extensos continúen en la página siguiente.
+function permitirDivisionFila(tr) {
+  const propiedades = hijo(tr, "trPr");
+  if (propiedades) for (const restriccion of hijos(propiedades, "cantSplit")) quitar(restriccion);
+}
+
+function ajustarPaginacion(body) {
+  for (const tabla of iterarTablas(body)) {
+    for (const fila of hijos(tabla, "tr")) {
+      const encabezado = hijo(hijo(fila, "trPr") || fila, "tblHeader");
+      const esEncabezado = encabezado && !["0", "false", "off"].includes(encabezado.getAttributeNS(W, "val"));
+      if (!esEncabezado) permitirDivisionFila(fila);
+    }
+  }
+}
+
 function llenarTabla(body, config, filasDatos, nombre, aviso) {
   const [palabras, nCols, ocurrencia] = config;
   const [tbl, idx] = buscarEncabezado(body, palabras, ocurrencia);
@@ -451,7 +476,7 @@ function llenarTabla(body, config, filasDatos, nombre, aviso) {
   let filasModelo = [];
   for (const tr of filas.slice(idx + 1)) {
     const txt = nfc(celdasUnicas(tr).map(textoCelda).join(" "));
-    if (RE_MARCADOR_RESTANTE.test(txt)) filasModelo.push(tr);
+    if (RE_MARCADOR_RESTANTE.test(txt) || (filasModelo.length && esFilaReservaVacia(tr, nCols))) filasModelo.push(tr);
     else break;
   }
   if (!filasModelo.length) filasModelo = filas.length > idx + 1 ? [filas[idx + 1]] : [];
@@ -647,6 +672,7 @@ export async function generarActa(contenidoTxt, plantilla, opciones = {}) {
   llenarTabla(body, TABLA_COMPROMISOS, acta.compromisos, "ACTIVIDADES A REALIZAR", aviso);
   llenarTabla(body, TABLA_SEGUIMIENTO, acta.seguimiento, "SEGUIMIENTO DIRECTIVO", aviso);
   llenarLista(body, RE_DECISIONES, acta.decisiones, "DECISIONES", aviso, SIN_DECISIONES);
+  ajustarPaginacion(body);
   revisarRestantes(body, aviso);
 
   zip.file("word/document.xml", serializar(doc, Serializer));
