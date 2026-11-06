@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import JSZip from 'jszip'
 import {
   generarActa,
-  leerTxt,
   nombreSalida,
   PLANTILLA_POR_DEFECTO
 } from './lib/llenarActa'
+import { esDocumentoAdmitido, leerDocumento } from './lib/leerDocumento.js'
 
 function Icono({ tipo, ...props }) {
   const trazos = {
@@ -75,16 +75,16 @@ export default function App() {
   function agregarArchivos(seleccion) {
     if (ocupado.current) return
     const nuevos = Array.from(seleccion || [])
-    const invalidos = nuevos.filter((a) => !/\.txt$/i.test(a.name))
+    const invalidos = nuevos.filter((a) => !esDocumentoAdmitido(a.name))
     setError(
       invalidos.length
-        ? `Solo se admiten archivos .txt. No se agregaron: ${invalidos.map((a) => a.name).join(', ')}.`
+        ? `Se admiten archivos .txt y .docx. Los archivos .doc deben guardarse como .docx. No se agregaron: ${invalidos.map((a) => a.name).join(', ')}.`
         : ''
     )
     // Validación de archivos duplicados por nombre, tamaño y fecha de modificación.
     setArchivos((anteriores) => {
       const lista = [...anteriores]
-      for (const a of nuevos.filter((a) => /\.txt$/i.test(a.name))) {
+      for (const a of nuevos.filter((a) => esDocumentoAdmitido(a.name))) {
         if (
           !lista.some(
             (b) =>
@@ -103,7 +103,7 @@ export default function App() {
     // El bloqueo por referencia impide el inicio simultáneo de lotes durante la actualización del estado de React.
     if (ocupado.current) return
     if (!archivos.length) {
-      setError('Selecciona al menos un archivo TXT para generar las actas.')
+      setError('Seleccione al menos un archivo TXT o Word (.docx) para generar las actas.')
       return
     }
     ocupado.current = true
@@ -132,14 +132,14 @@ export default function App() {
       const lote = []
       const zip = new JSZip()
       const nombres = new Set()
-      // Procesamiento independiente de cada TXT para conservar los resultados ante errores en otros archivos.
-      for (const [indice, txt] of archivos.entries()) {
+      // Procesamiento independiente de cada documento para conservar los resultados ante errores en otros archivos.
+      for (const [indice, entrada] of archivos.entries()) {
         if (!montado.current) return
         try {
-          const contenido = leerTxt(await txt.arrayBuffer())
+          const contenido = await leerDocumento(entrada)
           const { archivo, avisos } = await generarActa(contenido, plantilla)
           if (!montado.current) return
-          const original = nombreSalida(txt.name)
+          const original = nombreSalida(entrada.name)
           let nombre = original
           let consecutivo = 2
           // Asignación de nombres únicos para impedir la sobrescritura de documentos en el archivo ZIP.
@@ -150,14 +150,14 @@ export default function App() {
           if (!montado.current) return
           zip.file(nombre, bytes)
           lote.push({
-            origen: txt.name,
+            origen: entrada.name,
             nombre,
             url: crearUrl(archivo),
             avisos
           })
         } catch (err) {
           lote.push({
-            origen: txt.name,
+            origen: entrada.name,
             error: err?.message || 'No se pudo generar esta acta.'
           })
         }
@@ -218,7 +218,7 @@ export default function App() {
             <p className='sobre-titulo'>DOCUMENTOS INSTITUCIONALES</p>
             <h1>Generador de actas de reunión</h1>
             <p className='descripcion'>
-              Convierte los archivos TXT del agente en actas de Word con el
+              Convierte los archivos TXT o Word (.docx) del agente en actas con el
               formato institucional. Carga varios archivos y genéralos en un
               solo paso.
             </p>
@@ -236,7 +236,7 @@ export default function App() {
             <span className='paso'>01</span>
             <div>
               <h2>Carga tus archivos</h2>
-              <p>Un archivo TXT por cada acta de reunión.</p>
+              <p>Un archivo TXT o Word (.docx) por cada acta de reunión.</p>
             </div>
           </div>
           <div
@@ -263,9 +263,9 @@ export default function App() {
               id='txt'
               type='file'
               multiple
-              accept='.txt,text/plain'
+              accept='.txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
               disabled={procesando}
-              aria-label='Seleccionar archivos TXT'
+              aria-label='Seleccionar archivos TXT o Word'
               onChange={(e) => {
                 agregarArchivos(e.target.files)
                 e.target.value = ''
@@ -280,7 +280,8 @@ export default function App() {
               <Icono tipo='subir' />
               Seleccionar archivos
             </button>
-            <small>Formato admitido: .txt · Selección múltiple</small>
+            <small>Formatos admitidos: .txt y .docx · Selección múltiple</small>
+            <small>Los documentos deben conservar las secciones del agente (###DATOS_GENERALES###, ###PARTICIPANTES###, etc.).</small>
           </div>
           {archivos.length > 0 && (
             <div className='seleccion'>
@@ -312,7 +313,7 @@ export default function App() {
                         {new Intl.NumberFormat('es-CO', {
                           maximumFractionDigits: 1
                         }).format(a.size / 1024)}{' '}
-                        KB · TXT
+                        KB · {a.name.split('.').pop().toUpperCase()}
                       </small>
                     </span>
                     <button

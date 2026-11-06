@@ -96,7 +96,7 @@ export function leerTxt(buffer) {
 }
 
 function parsearTxt(contenido, aviso) {
-  if (!contenido.trim()) throw new Error("El archivo TXT está vacío.");
+  if (!contenido.trim()) throw new Error("El archivo de entrada está vacío.");
 
   // Eliminación de los delimitadores de bloques Markdown que pueden envolver el TXT del agente.
   contenido = contenido.replace(/^```.*$/gm, "");
@@ -118,10 +118,10 @@ function parsearTxt(contenido, aviso) {
   }
 
   if (!SECCIONES.some((s) => Object.hasOwn(secciones, s))) {
-    throw new Error("El TXT no contiene secciones de acta reconocibles. Usa el archivo estructurado del agente (###DATOS_GENERALES###, ###PARTICIPANTES###, etc.).");
+    throw new Error("El documento no contiene secciones de acta reconocibles. Se requiere el archivo estructurado del agente (###DATOS_GENERALES###, ###PARTICIPANTES###, etc.).");
   }
   if (!SECCIONES.some((s) => secciones[s]?.some((linea) => linea.trim()))) {
-    throw new Error("Las secciones del TXT no contienen datos para generar el acta.");
+    throw new Error("Las secciones del documento no contienen datos para generar el acta.");
   }
   for (const s of SECCIONES) {
     if (!(s in secciones)) {
@@ -666,7 +666,7 @@ export async function generarActa(contenidoTxt, plantilla, opciones = {}) {
   return { archivo, avisos, acta };
 }
 
-// El nombre del documento incorpora el nombre base del TXT y la fecha y hora locales.
+// El nombre del documento incorpora el nombre base del archivo de entrada y la fecha y hora locales.
 export function nombreSalida(nombreTxt) {
   const base = nombreTxt.replace(/\.[^.]*$/, "");
   const d = new Date();
